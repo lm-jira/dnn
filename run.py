@@ -1,70 +1,36 @@
-import tensorflow as tf
+import click
+import importlib
+
 from tensorflow import keras
 
-import numpy as np
-import sklearn.metrics as metrics
+@click.command()
+@click.option('--opt', type=click.Choice(['train', 'test']), default='train', 
+                  help='train or test the model')
+def run(opt):
+    fashion_mnist = keras.datasets.fashion_mnist
 
-from network.simpleNet import simpleNet
+    if opt == "train":
+        (train_images, train_labels), (_, _) = fashion_mnist.load_data()
+        # preprocess images
+        train_images = train_images / 255.0
 
-fashion_mnist = keras.datasets.fashion_mnist
-(train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+        mod_name = "executor.train"
+        mod = importlib.import_module(mod_name)
+        mod.run(train_images, train_labels)
 
-# preprocess images
-train_images = train_images / 255.0
-test_images = test_images / 255.0
+    elif opt == "test":
+        (_, _), (test_images, test_labels) = fashion_mnist.load_data()
+        # preprocess images
+        test_images = test_images / 255.0
 
-graph = tf.Graph()
+        mod_name = "executor.test"
+        mod = importlib.import_module(mod_name)
+        mod.run(test_images, test_labels)
 
-with graph.as_default():
-    model = simpleNet(epochs=10, batch_size=100)
 
-    x_pl, y_pl = model.placeholders()
-    output = model.network(x_pl)
-    loss = model.loss(y_pl, output)
+if __name__ == "__main__":
+    run()
 
-    opt = model.optimizer()
-    train_op = model.train_op(loss, opt)
-
-    sess = tf.Session(graph=graph)
-    sess.run(tf.global_variables_initializer())
-
-    i=0
-    while(i<model.epochs):
-        print("epochs = ", i)
-        indexes = np.random.permutation(len(train_labels))
-        iter_per_epoch = len(train_images)/model.batch_size
-        j=0
-
-        while(j<iter_per_epoch):
-            x_batch = train_images[indexes[j*model.batch_size: (j+1)*(model.batch_size)]]
-            y_batch = train_labels[indexes[j*model.batch_size: (j+1)*(model.batch_size)]]
-
-            feed_dict = {x_pl: x_batch,
-                         y_pl: y_batch
-                         }
-
-            _, loss_val = sess.run([train_op, loss], feed_dict=feed_dict)
-
-            j+=1
-        i+=1
-
-    iter_per_epoch = len(test_images)/model.batch_size
-    i = 0
-    sum_correct = 0
-
-    while(i<iter_per_epoch):
-        feed_dict = {x_pl: test_images[i*model.batch_size: (i+1)*model.batch_size]}
-        predict_y = sess.run(output, feed_dict=feed_dict)
-
-        test_label_batch = test_labels[i*model.batch_size: (i+1)*model.batch_size]
-        predict_y = np.argmax(predict_y, axis=1)
-        correct = predict_y==test_label_batch
-        correct = correct.astype(int)
-        correct = np.sum(correct)
-        sum_correct += correct
-        
-        i+=1
-
-    print("acc = ", sum_correct/float(len(test_labels)))
+    
 
 
