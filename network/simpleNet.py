@@ -17,7 +17,7 @@ class simpleNet:
         x = tf.layers.dense(x, 128)
         x = tf.nn.relu(x)
         x = tf.layers.dense(x, 10)
-        output = tf.nn.softmax(x)
+        output = tf.nn.softmax(x, name="softmax")
         return output
 
     def loss(self, y_pl, y_pred):
